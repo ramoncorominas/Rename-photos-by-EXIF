@@ -92,11 +92,29 @@ def create_renaming_dict(img_filenames):
         img_date_fmt = format_exif_date(img_exif_date)
         logging.debug(f'{img_filename}\t{img_date_fmt}')
         renaming_dict[img_filename] = img_date_fmt
+    return renaming_dict
     
+
+## ** TBD: There can be duplicate dates, so renaming will fail
+def number_of_duplicates(renaming_dict):
+    """Check if there are any repeated dates in the same directory"""
+    repeated_dates = []
+    existing_dates = []
+    all_dates = [dt for dt in renaming_dict.values() if dt is not None]
+    for date_val in all_dates:
+        if date_val in existing_dates:
+            repeated_dates.append(date_val)
+        else:
+            existing_dates.append(date_val)
+    return len(repeated_dates)
+
+
+    
+
     return renaming_dict
 
-## ** change extension as a test of renaming files **
-def change_extension(fname, ext1, ext2):
+## ** Just rename those images that can be renamed, log all
+def rename_images(renaming_dict):
     if fname.endswith('.'+ext1):
         new_fname = fname[:-len(ext1)]+ext2
     os.rename(fname, new_fname)
@@ -109,10 +127,14 @@ def main():
     images = get_filenames(img_dir, img_ext)
     logging.info('Creating renaming dictionary...')
     renaming_dict = create_renaming_dict(images)
-    good_files = {k:v for k,v in renaming_dict.items() if v is not None}
-    bad_files = {k:v for k,v in renaming_dict.items() if v is None}
-    logging.info(f'{len(good_files)} GOOD files in dictionary')
-    logging.info(f'{len(bad_files)} BAD files in dictionary')
+    num_good = len({k:v for k,v in renaming_dict.items() if v is not None})
+    num_bad  = len(renaming_dict) - num_good
+    num_dupl = number_of_duplicates(renaming_dict)
+    logging.info(f'{num_good} files have a valid EXIF datetime')
+    logging.info(f'{num_bad} files have no valud EXIF datetime')
+    logging.info(f'{num_dupl} repeated date & time')
+    
+    
     # rename_images(renaming_dict)
 
 if __name__ == '__main__':
