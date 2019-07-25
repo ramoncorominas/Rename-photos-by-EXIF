@@ -10,7 +10,7 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(levelname)s: %(message)s",
     datefmt="%H:%M:%S",
 )
@@ -25,10 +25,10 @@ class ExifDateError(Exception):
     return 'aaaa-mm-dd_hh-mm-ss'
     pass
 
-def get_exif_data(image_filename):
+def get_exif_data(img_filename):
     """Get EXIF data from an image file"""
     try:
-        image = Image.open(image_filename)
+        image = Image.open(img_filename)
         exif_raw = image.getexif()
         exif_data = {
             TAGS[key]: val
@@ -37,7 +37,7 @@ def get_exif_data(image_filename):
         }
         return exif_data
     except IOError as err:
-        logging.warning(f'Error opening {image_filename}')
+        logging.warning(f'Error opening {img_filename}')
         raise FileOpenError from err
 
 
@@ -64,23 +64,36 @@ def get_filenames(directory, extensions=('.jpg', '.jpeg', '.png', '.gif')):
     return filenames
 
 
-def format_exif_date(exif_date, format='%Y-%m-%d_%H-%M-%S'):
-    """Converts an EXIF Date to the specified format"""
-    # TBD: use the format instead of just replacing ':'
-    return exif_date.replace(':', '-').replace(' ', '_')
-
-def date_from_exif(image_filename):
+def date_from_exif(img_filename):
     """Get a datetime from EXIF tags"""
     exif_datetags = ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized']
-    exif_data = get_exif_data(image_filename)
+    exif_data = get_exif_data(img_filename)
     for datetag in exif_datetags:
         if datetag in exif_data:
             return exif_data[datetag]
     
-    logging.warning(f'No EXIF Date tags found in {image_filename}')
-    return '1970:01:01 00:00:00'
-    raise ExifDateError('No EXIF Date tags found')
+    logging.warning(f'No EXIF Date tags found in {img_filename}')
+    # ** raise ExifDateError('No EXIF Date tags found')
+    return None
 
+
+def format_exif_date(exif_date, format='%Y-%m-%d_%H-%M-%S'):
+    """Converts an EXIF Date to the specified format"""
+    # ** TBD: use the format instead of just replacing ':'
+    if isinstance(exif_date, str):
+        return exif_date.replace(':', '-').replace(' ', '_')
+    else:
+        return exif_date
+
+def create_renaming_dict(img_filenames):
+    renaming_dict = {}
+    for img_filename in img_filenames:
+        img_exif_date = date_from_exif(img_filename)
+        img_date_fmt = format_exif_date(img_exif_date)
+        logging.debug(f'{img_filename}\t{img_date_fmt}')
+        renaming_dict[img_filename] = img_date_fmt
+    
+    return renaming_dict
 
 ## ** change extension as a test of renaming files **
 def change_extension(fname, ext1, ext2):
@@ -94,10 +107,13 @@ def main():
     img_ext = ['.gif', '.png', '.jpg', '.jpeg']
     
     images = get_filenames(img_dir, img_ext)
-    for img_filename in images:
-        img_exif_date = date_from_exif(img_filename)
-        img_date_fmt = format_exif_date(img_exif_date)
-        logging.info(f'{img_filename}\t{img_date_fmt}')
+    logging.info('Creating renaming dictionary...')
+    renaming_dict = create_renaming_dict(images)
+    good_files = {k:v for k,v in renaming_dict.items() if v is not None}
+    bad_files = {k:v for k,v in renaming_dict.items() if v is None}
+    logging.info(f'{len(good_files)} GOOD files in dictionary')
+    logging.info(f'{len(bad_files)} BAD files in dictionary')
+    # rename_images(renaming_dict)
 
 if __name__ == '__main__':
     main()
