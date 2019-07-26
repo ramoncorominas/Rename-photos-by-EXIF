@@ -115,9 +115,13 @@ def number_of_duplicates(renaming_dict):
 
 ## ** Just rename those images that can be renamed, log all
 def rename_images(renaming_dict):
-    if fname.endswith('.'+ext1):
-        new_fname = fname[:-len(ext1)]+ext2
-    os.rename(fname, new_fname)
+    for old_fname, new_fname in renaming_dict.items():
+        try:
+            os.rename(old_fname, new_fname)
+            logging.info(f'{old_fname} -> {new_fname}')
+        except IOError as err:
+            logging.warning(f'{old_fname} coul not be renamed')
+        
 
 
 def main():
