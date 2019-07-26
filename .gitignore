@@ -7,4 +7,5 @@ __pycache__
 .dmypy.json
 .DS_Store
 fotos
+fotos/*
 *.bak
